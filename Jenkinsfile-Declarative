@@ -6,7 +6,7 @@ pipeline {
     stages {
         stage('1CloneCodefromgit') {
             steps {
-                git branch: 'development', credentialsId: 'gitdemo1', url: 'https://github.com/TOKAL-Software-Solution/fintech-app'
+                git branch: 'master', credentialsId: 'gitdemo1', url: 'https://github.com/TOKAL-Software-Solution/fintech-app'
             }
         }
         
