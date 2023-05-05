@@ -1,0 +1,65 @@
+pipeline {
+    agent any
+    tools {
+         maven "maven"
+    }
+    stages {
+        stage('1CloneCodefromgit') {
+            steps {
+                git branch: 'development', credentialsId: 'gitdemo1', url: 'https://github.com/TOKAL-Software-Solution/fintech-app'
+            }
+        }
+        
+        stage('2Build & Test') {
+            steps {
+               sh "echo 'Running JUnit-Test-Cases' "
+               sh "echo 'All tests must pass for artifacts to be uploaded' "
+               sh "mvn clean package"
+            }
+        }
+        
+        stage('3CodeQualityAnalysis') {
+            steps {
+               sh "echo 'Running code quality in sonaqube' "
+               /*sh "echo 'All tests must pass for artifacts to be uploaded' "*/
+               sh "mvn sonar:sonar"
+            }
+        }
+        
+          stage('4NexusBack-Up') {
+            steps {
+               sh "echo 'uploading artifacts into nexus' "
+               /*sh "echo 'All tests must pass for artifacts to be uploaded' "*/
+               sh "mvn deploy"
+            }
+        }
+        
+        stage('5Deploy2UAT') {
+            steps {
+               sh "echo 'deploying application to app server for UAT testing' "
+               deploy adapters: [tomcat9(credentialsId: 'Tomcat Credential', path: '', url: 'http://18.221.201.137:8080/')], contextPath: null, war: 'target/*war'
+            }
+        }
+        stage('6ApprovalGate') {
+            steps {
+               sh "echo 'ready for review'"
+               timeout(time:9, unit:'HOURS') {
+                   input message:'Application ready for delpoyment,please, review and approve'
+                   }
+            }
+        }
+        stage('7Deploy2Prod') {
+            steps {
+               sh "echo 'Deploying to production'"
+               sh "sleep 50" 
+               deploy adapters: [tomcat9(credentialsId: 'Tomcat Credential', path: '', url: 'http://18.221.201.137:8080/')], contextPath: null, war: 'target/*war'
+            }
+        }
+                
+    }
+    post {
+        /*Always {}*/
+        success {emailext body: 'This is to inform you of a successful build and deployment of the TOKAL application version 0.0.1-SNAPSHOT for UAT. ', recipientProviders: [buildUser(), developers()], subject: 'Success', to: 'yemi.ladele@gmail.com'}
+        failure {emailext body: 'This is to inform you of a failed build and deployment of the TOKAL application version 0.0.1-SNAPSHOT. ', recipientProviders: [buildUser(), developers()], subject: 'Failure', to: 'yemi.ladele@gmail.com'}
+    }
+}
